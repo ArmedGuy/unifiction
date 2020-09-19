@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/ArmedGuy/unifiction/config"
@@ -28,13 +29,17 @@ func main() {
 		log.Fatalf("Unable to read config: %v", err)
 	}
 
-	for _, dev := range config.Devices {
-		if !fileExists(dev.DeviceDriver) {
-			log.Fatalf("Unable to initialize, could not find device driver %v", dev.DeviceDriver)
-		}
-	}
+	//for _, dev := range config.Devices {
+	//	if !fileExists(dev.DeviceDriver) {
+	//		log.Fatalf("Unable to initialize, could not find device driver %v", dev.DeviceDriver)
+	//	}
+	//}
 	var wg sync.WaitGroup
 	for _, dev := range config.Devices {
+		dev.InformURL = config.InformUrl
+		dev.DevicePath = config.DevicePath
+		driverParams := strings.Join(dev.DriverParams, "\n")
+		dev.WriteFile("driver_params", driverParams)
 		log.Printf("[DEBUG] main: Starting loop for %v\n", dev.Name)
 		wg.Add(1)
 		go inform.MainLoop(&wg, config, &dev)
