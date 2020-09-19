@@ -37,7 +37,7 @@ func inform(cfg *config.Config, device *device.Device) uint {
 		}
 		return inform(cfg, device)
 	}
-	return action.Interval
+	return action.Interval / 2
 }
 
 func MainLoop(wg *sync.WaitGroup, cfg *config.Config, device *device.Device) {

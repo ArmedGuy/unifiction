@@ -11,14 +11,14 @@ import (
 )
 
 type Device struct {
-	Name         string   `json:"name"`
-	MAC          string   `json:"mac"`
-	IP           string   `json:"ip"`
-	UniFiModel   string   `json:"model"`
-	FWVersion    string   `json:"fw_version"`
-	DeviceDriver string   `json:"device_driver"`
-	Ports        int      `json:"ports"`
-	DriverParams []string `json:"driver_params"`
+	Name             string   `json:"name"`
+	MAC              string   `json:"mac"`
+	IP               string   `json:"ip"`
+	UniFiModel       string   `json:"model"`
+	FWVersion        string   `json:"fw_version"`
+	DeviceDriver     string   `json:"device_driver"`
+	DeviceDriverArgs []string `json:"device_driver_args"`
+	DriverParams     []string `json:"driver_params"`
 
 	InformURL  string
 	DevicePath string
@@ -78,7 +78,7 @@ func (dev *Device) Load() {
 
 func (dev *Device) WriteFile(file, data string) {
 	info, err := os.Stat(path.Join(dev.DevicePath, dev.Name))
-	perm := os.FileMode(0600)
+	perm := os.FileMode(0700)
 	if err != nil || !info.IsDir() {
 		log.Printf("[DEBUG] device: Device folder not found for %v, creating it\n", dev.Name)
 		os.MkdirAll(path.Join(dev.DevicePath, dev.Name), os.ModeDir|perm)
@@ -88,10 +88,11 @@ func (dev *Device) WriteFile(file, data string) {
 }
 
 func (dev *Device) Command(action string) []byte {
-	cmd := exec.Command("python", dev.DeviceDriver, action, path.Join(dev.DevicePath, dev.Name))
+	args := append(dev.DeviceDriverArgs, action, path.Join(dev.DevicePath, dev.Name))
+	cmd := exec.Command(dev.DeviceDriver, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("[ERROR] device: Failed action %v, reason %v\n", action, err)
+		log.Printf("[ERROR] device: Failed action %v for %v, reason %v\n", action, dev.Name, err)
 	}
 	return out
 }

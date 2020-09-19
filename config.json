@@ -1,5 +1,5 @@
 {
-    "device_path": "C:\\Users\\johan\\unifiction",
+    "device_path": "/opt/unifiction",
     "inform_url" : "http://192.168.1.237:8080/inform",
     "devices": [
         {
@@ -7,9 +7,8 @@
             "mac": "78:54:2e:b4:6a:e0",
             "ip": "192.168.1.199",
             "model": "US24",
-            "device_driver": ".\\device_drivers\\snmpdriver.py",
+            "device_driver": "/usr/bin/snmpdriver.py",
             "fw_version": "4.3.20.11298",
-            "ports": 24,
             "driver_params": [
                 "snmp_host=192.168.1.199",
                 "snmp_community=private",

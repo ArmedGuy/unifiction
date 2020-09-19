@@ -3,13 +3,13 @@ import sys
 import os.path
 import json
 from pysnmp import hlapi
-
-
 """
-Generic SNMP Unifiction Driver
+Cisco iOS/NX-OS Unifiction Driver
 
 driver_params:
 uplink=48 -- Decide which port is considered defacto uplink
+vlans=1,16,193,450 -- Set which vlans we should macsuck
+ignore_interfaces=mgmt0 -- Name/desc of interfaces to skip listing
 
 """
 
@@ -74,7 +74,7 @@ def get_bulk(target, oids, credentials, count, start_from=0, port=161,
     handler = hlapi.bulkCmd(
         engine,
         credentials,
-        hlapi.UdpTransportTarget((target, port)),
+        hlapi.UdpTransportTarget((target, port), timeout=15),
         context,
         start_from, count,
         *construct_object_types(oids),
@@ -104,6 +104,10 @@ with open(os.path.join(cfg_dir, "driver_params"), "r") as f:
     for line in f.readlines():
         key, _, val = line.partition("=")
         driver_params[key] = val.strip()
+        if key == "vlans":
+            driver_params[key] = val.strip().split(",")
+        if key == "ignore_interfaces":
+            driver_params[key] = val.strip().split(",")
 
 
 ####################################################################
@@ -137,14 +141,14 @@ snmp_interface_data = [
 #    '1.3.6.1.2.1.17.4.3.1.5' # age
 #]
 
-snmp_vlan_fdb_data = [
-    '1.3.6.1.2.1.17.7.1.2.2.1.2', # ifIndex
+snmp_fdb_data = [
+    '1.3.6.1.2.1.17.4.3.1.2', # ifIndex
 ]
 
 if_oid_to_key = {
     '1.3.6.1.2.1.2.2.1.1.': 'port_idx',  # idx
-    '1.3.6.1.2.1.31.1.1.1.15': 'media',  # type
-    '1.3.6.1.2.1.2.2.1.5.': 'speed',  # speed
+    '1.3.6.1.2.1.2.2.1.3': 'media',  # type
+    '1.3.6.1.2.1.31.1.1.1.15.': 'speed',  # speed
     '1.3.6.1.2.1.2.2.1.7.': 'enable',  # adm status
     '1.3.6.1.2.1.2.2.1.8.': 'up',  # oper status
     '1.3.6.1.2.1.2.2.1.10.': 'rx_bytes',  # rx octets
@@ -159,12 +163,16 @@ if_oid_to_key = {
     '1.3.6.1.2.1.2.2.1.20.': 'tx_errors',  # tx errors
 }
 
-
+idx = 1
+idx_map = {}
 def fix_if(intf):
-    intf["port_idx"] = intf["port_idx"] - 10100 if intf["port_idx"] > 10099 else intf["port_idx"]
+    global idx
+    idx_map[intf["port_idx"]] = idx
+    intf["port_idx"] = idx
+    idx += 1
     intf["up"] = True if intf["up"] == 1 else False
     intf["enable"] = True if intf["enable"] == 1 else False
-    intf["speed"] = int(intf["speed"] / 1000000) if intf["speed"] > 0 else 0
+    #intf["speed"] = int(intf["speed"] / 1000000) if intf["speed"] > 0 else 0
     if intf["media"] == 117:  # gigabitEthernet
         intf["media"] = "GE"
     elif intf["media"] == 62:  # fastEthernet
@@ -196,6 +204,9 @@ if sys.argv[1] == "dump":
         intf = {}
         skip_if = False
         for oid, val in interface.items():
+            if oid.startswith("1.3.6.1.2.1.2.2.1.2.") and val in driver_params.get("ignore_interfaces", []):
+                skip_if = True
+                continue
             if oid.startswith("1.3.6.1.2.1.2.2.1.3.") and val not in (117, 6):
                 skip_if = True
                 continue
@@ -206,27 +217,33 @@ if sys.argv[1] == "dump":
             continue
         fix_if(intf)
         ret["port_table"].append(intf)
-    vlan_macs = get_bulk(
-        driver_params["snmp_host"], snmp_vlan_fdb_data, creds, 1000
-    )
-    for mac in vlan_macs:
-        for oid, value in mac.items():
-            if value == 0: 
-                continue
-            if oid.startswith("1.3.6.1.2.1.17.7.1.2.2.1.2."):
-                raw = oid.replace("1.3.6.1.2.1.17.7.1.2.2.1.2.", "").split(".")
-                mac = ":".join("%02x" % int(x) for x in raw[-6:])
-                vlan = int(raw[0])
-                ret["port_table"][value-1]["mac_table"].append({
-                    "age": 1,
-                    "mac": mac,
-                    "static": False,
-                    "uptime": 0,
-                    "vlan": vlan
-                })
+
+    for vlan in driver_params.get("vlans", ["1"]):
+        creds = hlapi.CommunityData("%s@%s" % (driver_params['snmp_community'], vlan))
+        try:
+            vlan_macs = get_bulk(
+                driver_params["snmp_host"], snmp_fdb_data, creds, 1000
+            )
+        except Exception:
+            continue
+        for mac in vlan_macs:
+            for oid, value in mac.items():
+                if value == 0:
+                    continue
+                if oid.startswith("1.3.6.1.2.1.17.4.3.1.2."):
+                    raw = oid.replace("1.3.6.1.2.1.17.4.3.1.2.", "").split(".")
+                    mac = ":".join("%02x" % int(x) for x in raw[-6:])
+                    ret["port_table"][(value%128)-1]["mac_table"].append({
+                        "age": 1,
+                        "mac": mac,
+                        "static": False,
+                        "uptime": 0,
+                        "vlan": int(vlan)
+                    })
 
     print(json.dumps(ret, indent=4))
 elif sys.argv[1] == "update":
     pass
 else:
     print("invalid command")
+

@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	DevicePath string          `json:"device_path"`
-	InformUrl  string          `json:"inform_url"`
-	Devices    []device.Device `json:"devices"`
+	DevicePath string           `json:"device_path"`
+	InformUrl  string           `json:"inform_url"`
+	Devices    []*device.Device `json:"devices"`
 }
 
 func ParseConfig(path string) (*Config, error) {

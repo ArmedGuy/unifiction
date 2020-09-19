@@ -42,7 +42,7 @@ func main() {
 		dev.WriteFile("driver_params", driverParams)
 		log.Printf("[DEBUG] main: Starting loop for %v\n", dev.Name)
 		wg.Add(1)
-		go inform.MainLoop(&wg, config, &dev)
+		go inform.MainLoop(&wg, config, dev)
 	}
 	wg.Wait()
 }
