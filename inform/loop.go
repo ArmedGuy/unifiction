@@ -11,7 +11,7 @@ import (
 )
 
 func inform(cfg *config.Config, device *device.Device) uint {
-	data := Pack(device)
+	data := Pack(cfg, device)
 	resp, err := http.Post(cfg.InformUrl, "application/octet-stream", data)
 	if err != nil {
 		log.Printf("[ERROR] inform: http.Post returned error %v\n", err)

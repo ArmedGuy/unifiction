@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+type MACTableEntry struct {
+	Port int    `json:"port"`
+	IP   string `json:"ip"`
+	MAC  string `json:"mac"`
+	VLAN int    `json:"vlan"`
+}
+
 type Device struct {
 	Name             string   `json:"name"`
 	MAC              string   `json:"mac"`
@@ -19,6 +26,8 @@ type Device struct {
 	DeviceDriver     string   `json:"device_driver"`
 	DeviceDriverArgs []string `json:"device_driver_args"`
 	DriverParams     []string `json:"driver_params"`
+	Disabled         bool     `json:"disabled"`
+	UplinkDevice     string   `json:"uplink_device"`
 
 	InformURL  string
 	DevicePath string

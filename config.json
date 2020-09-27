@@ -1,6 +1,9 @@
 {
     "device_path": "/opt/unifiction",
     "inform_url" : "http://192.168.1.237:8080/inform",
+    "root_switch": "e4:1d:2d:90:b8:1e",
+    "gateway_ip": "192.168.1.1",
+    "gateway_mac": "",
     "devices": [
         {
             "name": "si01-c305",

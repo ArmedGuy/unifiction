@@ -10,6 +10,9 @@ import (
 type Config struct {
 	DevicePath string           `json:"device_path"`
 	InformUrl  string           `json:"inform_url"`
+	RootSwitch string           `json:"root_switch"`
+	GatewayIP  string           `json:"gateway_ip"`
+	GatewayMAC string           `json:"gateway_mac"`
 	Devices    []*device.Device `json:"devices"`
 }
 

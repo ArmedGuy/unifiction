@@ -36,6 +36,9 @@ func main() {
 	//}
 	var wg sync.WaitGroup
 	for _, dev := range config.Devices {
+		if dev.Disabled {
+			continue
+		}
 		dev.InformURL = config.InformUrl
 		dev.DevicePath = config.DevicePath
 		driverParams := strings.Join(dev.DriverParams, "\n")

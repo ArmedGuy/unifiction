@@ -2,8 +2,10 @@ package inform
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 
+	"github.com/ArmedGuy/unifiction/config"
 	"github.com/ArmedGuy/unifiction/device"
 )
 
@@ -51,7 +53,7 @@ type InformResponse struct {
 	ModelDisplay       string            `json:"model_display"`
 	Netmask            string            `json:"netmask"`
 	Overheating        bool              `json:"overheating"`
-	PortTable          []PortTable       `json:"port_table"`
+	PortTable          []*PortTable      `json:"port_table"`
 	PowerSource        string            `json:"power_source"`
 	PowerSourceVoltage string            `json:"power_source_voltage"`
 	RequiredVersion    string            `json:"required_version"`
@@ -168,7 +170,7 @@ type SystemStats struct {
 	Uptime string `json:"uptime"`
 }
 
-func GetResponse(dev *device.Device) *InformResponse {
+func GetResponse(cfg *config.Config, dev *device.Device) *InformResponse {
 	resp := &InformResponse{
 		Architecture:      "x86",
 		BoardRev:          1,
@@ -180,6 +182,8 @@ func GetResponse(dev *device.Device) *InformResponse {
 		Dualboot:          true,
 		EverCrash:         false,
 		FwCaps:            0,
+		GatewayIP:         cfg.GatewayIP,
+		GatewayMac:        cfg.GatewayMAC,
 		HasEth1:           false,
 		HasFan:            false,
 		HasSpeaker:        false,
@@ -206,8 +210,9 @@ func GetResponse(dev *device.Device) *InformResponse {
 		Overheating:    false,
 		// PortTable
 		PowerSource:        "wall",
-		PowerSourceVoltage: "48",
+		PowerSourceVoltage: "230",
 		RequiredVersion:    "3.9.40",
+		RootSwitch:         cfg.RootSwitch,
 		Satisfaction:       100,
 		SelfrunBeacon:      true,
 		Serial:             "tjosanhejsan",
@@ -227,5 +232,41 @@ func GetResponse(dev *device.Device) *InformResponse {
 
 	datadump := dev.Command("dump")
 	_ = json.Unmarshal(datadump, resp)
+
+	for _, port := range resp.PortTable {
+		port.MacTable = filterMacs(cfg, dev, port.MacTable)
+	}
 	return resp
+}
+
+// Contains tells whether a contains x.
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func filterMacs(cfg *config.Config, dev *device.Device, macs []MacTable) []MacTable {
+	var ret []MacTable
+	var bad_macs []string
+	for _, d := range cfg.Devices {
+		if d.MAC == dev.MAC {
+			continue
+		}
+		if d.UplinkDevice == dev.Name {
+			continue
+		}
+		bad_macs = append(bad_macs, d.MAC)
+	}
+	for _, mac := range macs {
+		if !contains(bad_macs, mac.Mac) {
+			ret = append(ret, mac)
+		} else {
+			log.Printf("[DEBUG] filtering mac %v on switch %v\n", mac, dev.Name)
+		}
+	}
+	return ret
 }

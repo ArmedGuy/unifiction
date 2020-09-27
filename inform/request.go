@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/ArmedGuy/unifiction/config"
 	"github.com/ArmedGuy/unifiction/device"
 )
 
@@ -25,7 +26,7 @@ func getCrypto(key string) (cipher.AEAD, error) {
 
 }
 
-func Pack(dev *device.Device) *bytes.Buffer {
+func Pack(cfg *config.Config, dev *device.Device) *bytes.Buffer {
 	var b bytes.Buffer
 	binary.Write(&b, binary.BigEndian, uint32(1414414933)) // Magic
 	binary.Write(&b, binary.BigEndian, uint32(0))          // Protocol Version
@@ -36,7 +37,7 @@ func Pack(dev *device.Device) *bytes.Buffer {
 	binary.Write(&b, binary.BigEndian, iv)        // init vector/nonce
 	binary.Write(&b, binary.BigEndian, uint32(1)) // payload version
 
-	inform := GetResponse(dev)
+	inform := GetResponse(cfg, dev)
 	payload, _ := json.Marshal(&inform)
 
 	l := len(payload) + 16
